@@ -1,10 +1,5 @@
 import User from "../models/user.js";
-import jwt from "jsonwebtoken";
-
-const generateToken = (userId) =>
-  jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: "7d",
-  });
+import { generateAccessToken, generateRefreshToken } from "../utils/tokens.js";
 
 export const register = async ({ firstName, lastName, email, password }) => {
   const exists = await User.exists({ email });
@@ -12,10 +7,13 @@ export const register = async ({ firstName, lastName, email, password }) => {
 
   const user = await User.create({ firstName, lastName, email, password });
 
-  return {
-    user,
-    accessToken: generateToken(user._id),
-  };
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  return { user, accessToken, refreshToken };
 };
 
 export const login = async ({ email, password }) => {
@@ -24,8 +22,24 @@ export const login = async ({ email, password }) => {
     throw new Error("INVALID_CREDENTIALS");
   }
 
-  return {
-    user,
-    accessToken: generateToken(user._id),
-  };
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  return { user, accessToken, refreshToken };
+};
+
+export const refresh = async (refreshToken) => {
+  const user = await User.findOne({ refreshToken });
+  if (!user) throw new Error("INVALID_REFRESH");
+
+  const accessToken = generateAccessToken(user._id);
+  return { accessToken };
+};
+
+export const logout = async (refreshToken) => {
+  if (!refreshToken) return;
+  await User.findOneAndUpdate({ refreshToken }, { refreshToken: null });
 };
