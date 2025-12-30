@@ -1,45 +1,72 @@
 import User from "../models/user.js";
+import RefreshSession from "../models/refreshSession.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/tokens.js";
+import { hashToken } from "../utils/hash.js";
+import jwt from "jsonwebtoken";
 
-export const register = async ({ firstName, lastName, email, password }) => {
-  const exists = await User.exists({ email });
+const REFRESH_TTL = 7 * 24 * 60 * 60 * 1000;
+
+export const register = async (data, meta) => {
+  const exists = await User.exists({ email: data.email });
   if (exists) throw new Error("USER_EXISTS");
 
-  const user = await User.create({ firstName, lastName, email, password });
-
-  const accessToken = generateAccessToken(user._id);
-  const refreshToken = generateRefreshToken(user._id);
-
-  user.refreshToken = refreshToken;
-  await user.save();
-
-  return { user, accessToken, refreshToken };
+  const user = await User.create(data);
+  return createSession(user, meta);
 };
 
-export const login = async ({ email, password }) => {
+export const login = async ({ email, password }, meta) => {
   const user = await User.findOne({ email });
   if (!user || !(await user.matchPassword(password))) {
     throw new Error("INVALID_CREDENTIALS");
   }
 
-  const accessToken = generateAccessToken(user._id);
-  const refreshToken = generateRefreshToken(user._id);
-
-  user.refreshToken = refreshToken;
-  await user.save();
-
-  return { user, accessToken, refreshToken };
+  return createSession(user, meta);
 };
 
-export const refresh = async (refreshToken) => {
-  const user = await User.findOne({ refreshToken });
-  if (!user) throw new Error("INVALID_REFRESH");
+const createSession = async (user, { ip, userAgent }) => {
+  const refreshToken = generateRefreshToken();
 
-  const accessToken = generateAccessToken(user._id);
-  return { accessToken };
+  const session = await RefreshSession.create({
+    userId: user._id,
+    refreshTokenHash: hashToken(refreshToken),
+    userAgent,
+    ip,
+    expiresAt: new Date(Date.now() + REFRESH_TTL),
+  });
+
+  return {
+    user,
+    accessToken: generateAccessToken(user._id),
+    refreshToken,
+  };
 };
 
-export const logout = async (refreshToken) => {
-  if (!refreshToken) return;
-  await User.findOneAndUpdate({ refreshToken }, { refreshToken: null });
+export const refresh = async (token, meta) => {
+  const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+  const tokenHash = hashToken(token);
+
+  const session = await RefreshSession.findOne({
+    _id: payload.sessionId,
+    refreshTokenHash: tokenHash,
+  });
+
+  if (!session) throw new Error("INVALID_SESSION");
+
+  await session.deleteOne(); // 🔁 rotation
+
+  const user = await User.findById(session.userId);
+  if (!user) throw new Error("USER_NOT_FOUND");
+
+  return createSession(user, meta);
+};
+
+export const logout = async (token) => {
+  try {
+    const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    await RefreshSession.findByIdAndDelete(payload.sessionId);
+  } catch {}
+};
+
+export const logoutAll = async (userId) => {
+  await RefreshSession.deleteMany({ userId });
 };
