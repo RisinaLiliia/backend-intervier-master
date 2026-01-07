@@ -24,15 +24,16 @@ export const login = async ({ email, password }, meta) => {
 };
 
 const createSession = async (user, { ip, userAgent }) => {
-  const refreshToken = generateRefreshToken();
-
   const session = await RefreshSession.create({
     userId: user._id,
-    refreshTokenHash: hashToken(refreshToken),
     userAgent,
     ip,
     expiresAt: new Date(Date.now() + REFRESH_TTL),
   });
+
+  const refreshToken = generateRefreshToken(session._id);
+  session.refreshTokenHash = hashToken(refreshToken);
+  await session.save();
 
   return {
     user,
@@ -52,7 +53,7 @@ export const refresh = async (token, meta) => {
 
   if (!session) throw new Error("INVALID_SESSION");
 
-  await session.deleteOne(); // 🔁 rotation
+  await session.deleteOne();
 
   const user = await User.findById(session.userId);
   if (!user) throw new Error("USER_NOT_FOUND");
