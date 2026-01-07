@@ -1,3 +1,4 @@
+import * as authService from "../services/auth.js";
 import RefreshSession from "../models/refreshSession.js";
 
 export const getSessionsController = async (req, res) => {
@@ -9,14 +10,19 @@ export const getSessionsController = async (req, res) => {
 };
 
 export const revokeSessionController = async (req, res) => {
-  const session = await RefreshSession.findOneAndDelete({
-    _id: req.params.id,
-    userId: req.user._id,
-  });
-
-  if (!session) {
-    return res.status(404).json({ message: "Session not found" });
+  try {
+    const sessionId = req.params.id;
+    await authService.revokeSession(sessionId, req.user._id);
+    res.json({ message: "Session revoked" });
+  } catch (err) {
+    if (err.message === "SESSION_NOT_FOUND") {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    if (err.message === "FORBIDDEN") {
+      return res
+        .status(403)
+        .json({ message: "Not allowed to revoke this session" });
+    }
+    res.status(500).json({ message: "Failed to revoke session" });
   }
-
-  res.json({ message: "Session revoked" });
 };

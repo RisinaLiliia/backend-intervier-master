@@ -17,7 +17,5 @@ router.post("/login", authLimiter, loginUserController);
 router.post("/refresh", refreshTokenController);
 router.post("/logout", logoutController);
 router.post("/logout-all", protect, logoutAllController);
-router.get("/sessions", protect, getSessionsController);
-router.delete("/sessions/:id", protect, revokeSessionController);
 
 export default router;

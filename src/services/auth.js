@@ -71,3 +71,12 @@ export const logout = async (token) => {
 export const logoutAll = async (userId) => {
   await RefreshSession.deleteMany({ userId });
 };
+
+export const revokeSession = async (sessionId, userId) => {
+  const session = await RefreshSession.findById(sessionId);
+  if (!session) throw new Error("SESSION_NOT_FOUND");
+  if (session.userId.toString() !== userId.toString())
+    throw new Error("FORBIDDEN");
+
+  await session.deleteOne();
+};
