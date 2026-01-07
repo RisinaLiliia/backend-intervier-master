@@ -24,16 +24,16 @@ export const login = async ({ email, password }, meta) => {
 };
 
 const createSession = async (user, { ip, userAgent }) => {
+  const refreshToken = generateRefreshToken();
+  const refreshTokenHash = hashToken(refreshToken);
+
   const session = await RefreshSession.create({
     userId: user._id,
     userAgent,
     ip,
     expiresAt: new Date(Date.now() + REFRESH_TTL),
+    refreshTokenHash,
   });
-
-  const refreshToken = generateRefreshToken(session._id);
-  session.refreshTokenHash = hashToken(refreshToken);
-  await session.save();
 
   return {
     user,

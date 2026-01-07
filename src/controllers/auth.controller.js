@@ -14,9 +14,19 @@ const getMeta = (req) => ({
 });
 
 export const registerUserController = async (req, res) => {
-  const data = await authService.register(req.body, getMeta(req));
-  res.cookie("refreshToken", data.refreshToken, cookieOptions);
-  res.status(201).json({ user: data.user, accessToken: data.accessToken });
+  try {
+    const data = await authService.register(req.body, getMeta(req));
+    res.cookie("refreshToken", data.refreshToken, cookieOptions);
+    res.status(201).json({ user: data.user, accessToken: data.accessToken });
+  } catch (err) {
+    if (err.message === "USER_EXISTS") {
+      return res
+        .status(400)
+        .json({ message: "User with this email already exists" });
+    }
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 export const loginUserController = async (req, res) => {
