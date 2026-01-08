@@ -55,3 +55,7 @@ export const logoutAllController = async (req, res) => {
   res.clearCookie("refreshToken");
   res.json({ message: "Logged out from all devices" });
 };
+
+export const meController = (req, res) => {
+  res.json(req.user);
+};
