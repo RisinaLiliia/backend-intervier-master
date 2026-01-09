@@ -37,9 +37,14 @@ export const loginUserController = async (req, res) => {
 
 export const refreshTokenController = async (req, res) => {
   const token = req.cookies.refreshToken;
-  if (!token) return res.sendStatus(401);
-
+  if (!token) {
+    return res.status(401).json({ message: "NO_REFRESH_TOKEN" });
+  }
   const data = await authService.refresh(token, getMeta(req));
+  if (!data) {
+    res.clearCookie("refreshToken");
+    return res.status(401).json({ message: "INVALID_SESSION" });
+  }
   res.cookie("refreshToken", data.refreshToken, cookieOptions);
   res.json({ accessToken: data.accessToken });
 };

@@ -43,7 +43,14 @@ const createSession = async (user, { ip, userAgent }) => {
 };
 
 export const refresh = async (token, meta) => {
-  const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+  let payload;
+
+  try {
+    payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+  } catch {
+    return null;
+  }
+
   const tokenHash = hashToken(token);
 
   const session = await RefreshSession.findOne({
@@ -51,12 +58,19 @@ export const refresh = async (token, meta) => {
     refreshTokenHash: tokenHash,
   });
 
-  if (!session) throw new Error("INVALID_SESSION");
+  if (!session) {
+    return null;
+  }
+
+  if (session.expiresAt < new Date()) {
+    await session.deleteOne();
+    return null;
+  }
 
   await session.deleteOne();
 
   const user = await User.findById(session.userId);
-  if (!user) throw new Error("USER_NOT_FOUND");
+  if (!user) return null;
 
   return createSession(user, meta);
 };
