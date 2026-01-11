@@ -1,15 +1,14 @@
 import express from "express";
 import { protect } from "../middleware/auth.js";
 import {
-  addAnswer,
-  updateAnswer,
-  deleteAnswer,
+  upsertUserAnswer,
+  deleteUserAnswer,
 } from "../controllers/answer.controller.js";
 
 const router = express.Router({ mergeParams: true });
 
-router.post("/:questionId", protect, addAnswer);
-router.patch("/:questionId/:answerId", protect, updateAnswer);
-router.delete("/:questionId/:answerId", protect, deleteAnswer);
+router.post("/:questionId", protect, upsertUserAnswer);
+
+router.delete("/:questionId", protect, deleteUserAnswer);
 
 export default router;

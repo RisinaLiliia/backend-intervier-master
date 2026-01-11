@@ -1,22 +1,31 @@
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
+import cookieParser from "cookie-parser";
 
 import authRoutes from "./routes/auth.js";
 import questionRoutes from "./routes/questions.js";
 import categoryRoutes from "./routes/categories.js";
 import answerRoutes from "./routes/answer.routes.js";
-
 import { errorHandler } from "./middleware/error.middleware.js";
-import cookieParser from "cookie-parser";
 
 const app = express();
 
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",")
+  : ["http://localhost:4200"];
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(",")
-      : ["http://localhost:4200"],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS policy: This origin is not allowed"));
+      }
+    },
     credentials: true,
   })
 );

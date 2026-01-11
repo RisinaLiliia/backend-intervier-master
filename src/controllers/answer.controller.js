@@ -1,46 +1,59 @@
 import Question from "../models/question.js";
 
-export const addAnswer = async (req, res) => {
+export const upsertUserAnswer = async (req, res) => {
   const { answer } = req.body;
-  if (!answer) return res.status(400).json({ message: "Answer is required" });
+  if (!answer?.trim()) {
+    return res.status(400).json({ message: "Answer is required" });
+  }
 
   const question = await Question.findById(req.params.questionId);
-  if (!question) return res.status(404).json({ message: "Question not found" });
+  if (!question) {
+    return res.status(404).json({ message: "Question not found" });
+  }
 
-  question.answers.push({ userId: req.user._id, text: answer });
+  const userId = req.user._id.toString();
+
+  let userAnswer = question.answers.find(
+    (a) => a.userId?.toString() === userId
+  );
+
+  if (userAnswer) {
+    userAnswer.text = answer;
+    userAnswer.updatedAt = new Date();
+  } else {
+    question.answers.push({
+      userId,
+      text: answer,
+    });
+    userAnswer = question.answers.at(-1);
+  }
+
   await question.save();
-  res.json(question);
+
+  res.json({
+    _id: userAnswer._id,
+    text: userAnswer.text,
+  });
 };
 
-export const updateAnswer = async (req, res) => {
-  const { questionId, answerId } = req.params;
-  const question = await Question.findById(questionId);
-  if (!question) return res.status(404).json({ message: "Question not found" });
+export const deleteUserAnswer = async (req, res) => {
+  const question = await Question.findById(req.params.questionId);
+  if (!question) {
+    return res.status(404).json({ message: "Question not found" });
+  }
 
-  const answer = question.answers.id(answerId);
-  if (!answer) return res.status(404).json({ message: "Answer not found" });
-  if (answer.userId.toString() !== req.user._id.toString())
-    return res.status(403).json({ message: "Access denied" });
+  const userId = req.user._id.toString();
 
-  answer.text = req.body.answer;
-  answer.updatedAt = Date.now();
+  const userAnswer = question.answers.find(
+    (a) => a.userId?.toString() === userId
+  );
+
+  if (!userAnswer) {
+    return res.status(404).json({ message: "User answer not found" });
+  }
+
+  question.answers.id(userAnswer._id).deleteOne();
   await question.save();
 
-  res.json(question);
-};
-
-export const deleteAnswer = async (req, res) => {
-  const { questionId, answerId } = req.params;
-  const question = await Question.findById(questionId);
-  if (!question) return res.status(404).json({ message: "Question not found" });
-
-  const answer = question.answers.id(answerId);
-  if (!answer) return res.status(404).json({ message: "Answer not found" });
-  if (answer.userId.toString() !== req.user._id.toString())
-    return res.status(403).json({ message: "Access denied" });
-
-  answer.deleteOne();
-  await question.save();
-
-  res.json({ message: "Answer deleted successfully" });
+  res.json({ message: "User answer deleted" });
 };
