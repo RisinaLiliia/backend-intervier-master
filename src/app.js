@@ -4,6 +4,7 @@ import morgan from "morgan";
 import cookieParser from "cookie-parser";
 
 import authRoutes from "./routes/auth.js";
+import sessionRoutes from "./routes/sessions.js";
 import questionRoutes from "./routes/questions.js";
 import categoryRoutes from "./routes/categories.js";
 import { errorHandler } from "./middleware/error.middleware.js";
@@ -18,12 +19,8 @@ app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS policy: This origin is not allowed"));
-      }
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error("CORS policy: This origin is not allowed"));
     },
     credentials: true,
   })
@@ -36,25 +33,25 @@ if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
 
-app.get("/", (req, res) => {
+app.get("/", (req, res) =>
   res.status(200).json({
     status: "success",
     service: "Backend API",
     environment: process.env.NODE_ENV || "development",
     timestamp: new Date().toISOString(),
-  });
-});
+  })
+);
 
 app.use("/api/auth", authRoutes);
+app.use("/api/sessions", sessionRoutes);
 app.use("/api/questions", questionRoutes);
 app.use("/api/categories", categoryRoutes);
 
-app.use((req, res) => {
-  res.status(404).json({
-    status: "error",
-    message: `Route ${req.originalUrl} not found`,
-  });
-});
+app.use((req, res) =>
+  res
+    .status(404)
+    .json({ status: "error", message: `Route ${req.originalUrl} not found` })
+);
 
 app.use(errorHandler);
 

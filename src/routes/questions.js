@@ -1,5 +1,6 @@
 import express from "express";
 import { protect } from "../middleware/auth.js";
+import { csrfProtect } from "../middleware/csrf.js";
 import {
   getQuestions,
   upsertUserAnswer,
@@ -8,9 +9,10 @@ import {
 
 const router = express.Router();
 
-router.get("/", getQuestions);
+router.use(protect);
 
-router.post("/:questionId", protect, upsertUserAnswer);
-router.delete("/:questionId", protect, deleteUserAnswer);
+router.get("/", getQuestions);
+router.post("/:questionId", csrfProtect, upsertUserAnswer);
+router.delete("/:questionId", csrfProtect, deleteUserAnswer);
 
 export default router;
