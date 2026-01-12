@@ -10,43 +10,57 @@ const cookieOptions = {
 
 const getMeta = (req) => ({
   ip: req.ip,
-  userAgent: req.headers["user-agent"],
+  userAgent: req.headers["user-agent"] || "unknown",
 });
 
-export const registerUserController = async (req, res) => {
+export const registerUserController = async (req, res, next) => {
   try {
-    const data = await authService.register(req.body, getMeta(req));
-    res.cookie("refreshToken", data.refreshToken, cookieOptions);
-    res.status(201).json({ user: data.user, accessToken: data.accessToken });
+    const { user, accessToken, refreshToken } = await authService.register(
+      req.body,
+      getMeta(req)
+    );
+    res.cookie("refreshToken", refreshToken, cookieOptions);
+    res.status(201).json({ user, accessToken });
   } catch (err) {
     if (err.message === "USER_EXISTS") {
-      return res
-        .status(400)
-        .json({ message: "User with this email already exists" });
+      return res.status(400).json({ message: "User already exists" });
     }
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    next(err);
   }
 };
 
-export const loginUserController = async (req, res) => {
-  const data = await authService.login(req.body, getMeta(req));
-  res.cookie("refreshToken", data.refreshToken, cookieOptions);
-  res.json({ user: data.user, accessToken: data.accessToken });
+export const loginUserController = async (req, res, next) => {
+  try {
+    const { user, accessToken, refreshToken } = await authService.login(
+      req.body,
+      getMeta(req)
+    );
+    res.cookie("refreshToken", refreshToken, cookieOptions);
+    res.json({ user, accessToken });
+  } catch (err) {
+    if (err.message === "INVALID_CREDENTIALS") {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+    next(err);
+  }
 };
 
-export const refreshTokenController = async (req, res) => {
-  const token = req.cookies.refreshToken;
-  if (!token) {
-    return res.status(401).json({ message: "NO_REFRESH_TOKEN" });
+export const refreshTokenController = async (req, res, next) => {
+  try {
+    const token = req.cookies.refreshToken;
+    if (!token) return res.status(401).json({ message: "NO_REFRESH_TOKEN" });
+
+    const data = await authService.refresh(token, getMeta(req));
+    if (!data) {
+      res.clearCookie("refreshToken");
+      return res.status(401).json({ message: "INVALID_SESSION" });
+    }
+
+    res.cookie("refreshToken", data.refreshToken, cookieOptions);
+    res.json({ accessToken: data.accessToken });
+  } catch (err) {
+    next(err);
   }
-  const data = await authService.refresh(token, getMeta(req));
-  if (!data) {
-    res.clearCookie("refreshToken");
-    return res.status(401).json({ message: "INVALID_SESSION" });
-  }
-  res.cookie("refreshToken", data.refreshToken, cookieOptions);
-  res.json({ accessToken: data.accessToken });
 };
 
 export const logoutController = async (req, res) => {

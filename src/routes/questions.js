@@ -11,7 +11,6 @@ const router = express.Router();
 router.get("/", getQuestions);
 
 router.post("/:questionId", protect, upsertUserAnswer);
-
 router.delete("/:questionId", protect, deleteUserAnswer);
 
 export default router;

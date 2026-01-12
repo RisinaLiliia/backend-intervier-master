@@ -6,10 +6,30 @@ import jwt from "jsonwebtoken";
 
 const REFRESH_TTL = 7 * 24 * 60 * 60 * 1000;
 
-export const register = async (data, meta) => {
-  const exists = await User.exists({ email: data.email });
-  if (exists) throw new Error("USER_EXISTS");
+const createSession = async (user, meta) => {
+  const rawRefresh = generateRefreshToken();
+  const refreshTokenHash = hashToken(rawRefresh);
 
+  const session = await RefreshSession.create({
+    userId: user._id,
+    refreshTokenHash,
+    userAgent: meta.userAgent,
+    ip: meta.ip,
+    expiresAt: new Date(Date.now() + REFRESH_TTL),
+  });
+
+  return {
+    user,
+    accessToken: generateAccessToken(user._id),
+    refreshToken: rawRefresh,
+    sessionId: session._id,
+  };
+};
+
+export const register = async (data, meta) => {
+  if (await User.exists({ email: data.email })) {
+    throw new Error("USER_EXISTS");
+  }
   const user = await User.create(data);
   return createSession(user, meta);
 };
@@ -19,32 +39,11 @@ export const login = async ({ email, password }, meta) => {
   if (!user || !(await user.matchPassword(password))) {
     throw new Error("INVALID_CREDENTIALS");
   }
-
   return createSession(user, meta);
-};
-
-const createSession = async (user, { ip, userAgent }) => {
-  const refreshToken = generateRefreshToken();
-  const refreshTokenHash = hashToken(refreshToken);
-
-  const session = await RefreshSession.create({
-    userId: user._id,
-    userAgent,
-    ip,
-    expiresAt: new Date(Date.now() + REFRESH_TTL),
-    refreshTokenHash,
-  });
-
-  return {
-    user,
-    accessToken: generateAccessToken(user._id),
-    refreshToken,
-  };
 };
 
 export const refresh = async (token, meta) => {
   let payload;
-
   try {
     payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
   } catch {
@@ -52,23 +51,17 @@ export const refresh = async (token, meta) => {
   }
 
   const tokenHash = hashToken(token);
-
   const session = await RefreshSession.findOne({
     _id: payload.sessionId,
     refreshTokenHash: tokenHash,
   });
 
-  if (!session) {
-    return null;
-  }
-
-  if (session.expiresAt < new Date()) {
-    await session.deleteOne();
+  if (!session || session.expiresAt < new Date()) {
+    if (session) await session.deleteOne();
     return null;
   }
 
   await session.deleteOne();
-
   const user = await User.findById(session.userId);
   if (!user) return null;
 
@@ -77,8 +70,8 @@ export const refresh = async (token, meta) => {
 
 export const logout = async (token) => {
   try {
-    const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-    await RefreshSession.findByIdAndDelete(payload.sessionId);
+    const { sessionId } = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    await RefreshSession.findByIdAndDelete(sessionId);
   } catch {}
 };
 
@@ -89,8 +82,8 @@ export const logoutAll = async (userId) => {
 export const revokeSession = async (sessionId, userId) => {
   const session = await RefreshSession.findById(sessionId);
   if (!session) throw new Error("SESSION_NOT_FOUND");
-  if (session.userId.toString() !== userId.toString())
+  if (session.userId.toString() !== userId.toString()) {
     throw new Error("FORBIDDEN");
-
+  }
   await session.deleteOne();
 };

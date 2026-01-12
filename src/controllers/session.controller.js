@@ -1,18 +1,21 @@
 import * as authService from "../services/auth.js";
 import RefreshSession from "../models/refreshSession.js";
 
-export const getSessionsController = async (req, res) => {
-  const sessions = await RefreshSession.find({ userId: req.user._id })
-    .sort({ updatedAt: -1 })
-    .select("-refreshTokenHash");
+export const getSessionsController = async (req, res, next) => {
+  try {
+    const sessions = await RefreshSession.find({ userId: req.user._id })
+      .sort({ updatedAt: -1 })
+      .select("-refreshTokenHash");
 
-  res.json(sessions);
+    res.json(sessions);
+  } catch (err) {
+    next(err);
+  }
 };
 
-export const revokeSessionController = async (req, res) => {
+export const revokeSessionController = async (req, res, next) => {
   try {
-    const sessionId = req.params.id;
-    await authService.revokeSession(sessionId, req.user._id);
+    await authService.revokeSession(req.params.id, req.user._id);
     res.json({ message: "Session revoked" });
   } catch (err) {
     if (err.message === "SESSION_NOT_FOUND") {
@@ -23,6 +26,6 @@ export const revokeSessionController = async (req, res) => {
         .status(403)
         .json({ message: "Not allowed to revoke this session" });
     }
-    res.status(500).json({ message: "Failed to revoke session" });
+    next(err);
   }
 };

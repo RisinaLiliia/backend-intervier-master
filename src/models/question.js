@@ -1,19 +1,25 @@
 import mongoose from "mongoose";
 
-const QuestionSchema = new mongoose.Schema({
-  question: { type: String, required: true },
-  categoryId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Category",
-    required: true,
+const AnswerSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    text: { type: String, required: true, trim: true },
   },
-  answers: [
-    {
-      userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-      text: { type: String },
-      updatedAt: { type: Date, default: Date.now },
+  { timestamps: true }
+);
+
+const QuestionSchema = new mongoose.Schema(
+  {
+    question: { type: String, required: true, trim: true },
+    categoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+      required: true,
+      index: true,
     },
-  ],
-});
+    answers: [AnswerSchema],
+  },
+  { timestamps: true }
+);
 
 export default mongoose.model("Question", QuestionSchema);
