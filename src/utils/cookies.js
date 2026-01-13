@@ -1,22 +1,24 @@
+const isProd = process.env.NODE_ENV === "production";
+
 const refreshCookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
+  secure: isProd,
+  sameSite: isProd ? "none" : "lax",
   maxAge: 7 * 24 * 60 * 60 * 1000,
   path: "/",
 };
 
 const csrfCookieOptions = {
   httpOnly: false,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
+  secure: isProd,
+  sameSite: isProd ? "none" : "lax",
   path: "/",
 };
 
 const accessCookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
+  secure: isProd,
+  sameSite: isProd ? "none" : "lax",
   path: "/",
   maxAge: 15 * 60 * 1000,
 };
