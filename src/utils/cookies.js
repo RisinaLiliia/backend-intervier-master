@@ -23,7 +23,7 @@ const accessCookieOptions = {
 
 export const setAuthCookies = (res, refreshToken, csrfToken, accessToken) => {
   res.cookie("refreshToken", refreshToken, refreshCookieOptions);
-  res.cookie("csrfToken", csrfCookieOptions);
+  res.cookie("csrfToken", csrfToken, csrfCookieOptions);
   res.cookie("accessToken", accessToken, accessCookieOptions);
 };
 

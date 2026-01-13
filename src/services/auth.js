@@ -27,7 +27,7 @@ const createSession = async (user, meta) => {
 
   return {
     user,
-    accessToken: generateAccessToken(user._id),
+    accessToken: generateAccessToken(user._id, session._id.toString()),
     refreshToken,
     csrfToken,
     sessionId: session._id,

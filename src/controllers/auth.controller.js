@@ -1,40 +1,17 @@
 import * as authService from "../services/auth.js";
-
-const refreshCookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-  path: "/",
-};
-
-const csrfCookieOptions = {
-  httpOnly: false,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
-  path: "/",
-};
+import { setAuthCookies, clearAuthCookies } from "../utils/cookies.js";
 
 const getMeta = (req) => ({
   ip: req.ip,
   userAgent: req.headers["user-agent"] || "unknown",
 });
 
-const setAuthCookies = (res, refreshToken, csrfToken) => {
-  res.cookie("refreshToken", refreshToken, refreshCookieOptions);
-  res.cookie("csrfToken", csrfToken, csrfCookieOptions);
-};
-
-const clearAuthCookies = (res) => {
-  res.clearCookie("refreshToken", { path: "/" });
-  res.clearCookie("csrfToken", { path: "/" });
-};
-
 export const registerUserController = async (req, res, next) => {
   try {
     const { user, accessToken, refreshToken, csrfToken } =
       await authService.register(req.body, getMeta(req));
-    setAuthCookies(res, refreshToken, csrfToken);
+
+    setAuthCookies(res, refreshToken, csrfToken, accessToken);
     res.status(201).json({ user, accessToken });
   } catch (err) {
     if (err.message === "USER_EXISTS")
@@ -47,7 +24,8 @@ export const loginUserController = async (req, res, next) => {
   try {
     const { user, accessToken, refreshToken, csrfToken } =
       await authService.login(req.body, getMeta(req));
-    setAuthCookies(res, refreshToken, csrfToken);
+
+    setAuthCookies(res, refreshToken, csrfToken, accessToken);
     res.json({ user, accessToken });
   } catch (err) {
     if (err.message === "INVALID_CREDENTIALS")
@@ -70,7 +48,7 @@ export const refreshTokenController = async (req, res, next) => {
       return res.status(401).json({ message: "INVALID_SESSION" });
     }
 
-    setAuthCookies(res, data.refreshToken, data.csrfToken);
+    setAuthCookies(res, data.refreshToken, data.csrfToken, data.accessToken);
     res.json({ accessToken: data.accessToken });
   } catch (err) {
     next(err);

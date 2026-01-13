@@ -31,7 +31,8 @@ export const getSessionsController = async (req, res, next) => {
       .select("_id ip userAgent createdAt updatedAt expiresAt");
 
     const result = sessions.map((s) => {
-      const isCurrent = s._id.toString() === req.currentSessionId;
+      const isCurrent = s._id.toString() === req.sessionId;
+
       return {
         _id: s._id,
         ip: s.ip,
@@ -58,7 +59,7 @@ export const revokeSessionController = async (req, res, next) => {
 
     await authService.revokeSession(sessionId, req.user._id);
 
-    if (sessionId === req.currentSessionId) {
+    if (sessionId === req.sessionId) {
       res.clearCookie("refreshToken", { path: "/" });
       res.clearCookie("csrfToken", { path: "/" });
     }
