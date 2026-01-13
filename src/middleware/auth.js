@@ -24,6 +24,7 @@ export const protect = async (req, res, next) => {
         if (!user) return res.status(401).json({ message: "USER_NOT_FOUND" });
 
         req.user = user;
+        req.user.sessionId = payload.sessionId;
         return next();
       } catch (err) {
         if (err.name !== "TokenExpiredError") {
@@ -51,7 +52,11 @@ export const protect = async (req, res, next) => {
     const user = await User.findById(session.userId).select("-password");
     if (!user) return res.status(401).json({ message: "USER_NOT_FOUND" });
 
-    const newAccessToken = generateAccessToken(user._id);
+    const newAccessToken = generateAccessToken(
+      user._id,
+      session._id.toString()
+    );
+
     res.cookie(ACCESS_COOKIE, newAccessToken, {
       ...cookieOptions,
       maxAge: 15 * 60 * 1000,
