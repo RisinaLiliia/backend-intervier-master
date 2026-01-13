@@ -1,0 +1,34 @@
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: "/",
+};
+
+const csrfCookieOptions = {
+  httpOnly: false,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/",
+};
+
+const accessCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/",
+  maxAge: 15 * 60 * 1000,
+};
+
+export const setAuthCookies = (res, refreshToken, csrfToken, accessToken) => {
+  res.cookie("refreshToken", refreshToken, refreshCookieOptions);
+  res.cookie("csrfToken", csrfCookieOptions);
+  res.cookie("accessToken", accessToken, accessCookieOptions);
+};
+
+export const clearAuthCookies = (res) => {
+  res.clearCookie("accessToken", { path: "/" });
+  res.clearCookie("refreshToken", { path: "/" });
+  res.clearCookie("csrfToken", { path: "/" });
+};

@@ -1,34 +1,10 @@
 import * as authService from "../services/auth.js";
-
-const refreshCookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-  path: "/",
-};
-
-const csrfCookieOptions = {
-  httpOnly: false,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
-  path: "/",
-};
+import { setAuthCookies, clearAuthCookies } from "../utils/cookies.js";
 
 const getMeta = (req) => ({
   ip: req.ip,
   userAgent: req.headers["user-agent"] || "unknown",
 });
-
-const setAuthCookies = (res, refreshToken, csrfToken) => {
-  res.cookie("refreshToken", refreshToken, refreshCookieOptions);
-  res.cookie("csrfToken", csrfToken, csrfCookieOptions);
-};
-
-const clearAuthCookies = (res) => {
-  res.clearCookie("refreshToken", { path: "/" });
-  res.clearCookie("csrfToken", { path: "/" });
-};
 
 export const registerUserController = async (req, res, next) => {
   try {
