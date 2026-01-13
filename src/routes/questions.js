@@ -9,10 +9,9 @@ import {
 
 const router = express.Router();
 
-router.use(protect);
-
 router.get("/", getQuestions);
-router.post("/:questionId", csrfProtect, upsertUserAnswer);
-router.delete("/:questionId", csrfProtect, deleteUserAnswer);
+
+router.post("/:questionId", protect, csrfProtect, upsertUserAnswer);
+router.delete("/:questionId", protect, csrfProtect, deleteUserAnswer);
 
 export default router;
