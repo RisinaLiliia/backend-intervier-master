@@ -8,23 +8,27 @@ import jwt from "jsonwebtoken";
 const REFRESH_TTL = 7 * 24 * 60 * 60 * 1000;
 
 const createSession = async (user, meta) => {
-  const rawRefresh = generateRefreshToken();
-  const refreshTokenHash = hashToken(rawRefresh);
   const csrfToken = generateCsrfToken();
 
   const session = await RefreshSession.create({
     userId: user._id,
-    refreshTokenHash,
+    refreshTokenHash: "PENDING",
     csrfHash: hashCsrfToken(csrfToken),
     userAgent: meta.userAgent,
     ip: meta.ip,
     expiresAt: new Date(Date.now() + REFRESH_TTL),
   });
+  const refreshToken = generateRefreshToken({
+    sessionId: session._id.toString(),
+  });
+
+  session.refreshTokenHash = hashToken(refreshToken);
+  await session.save();
 
   return {
     user,
     accessToken: generateAccessToken(user._id),
-    refreshToken: rawRefresh,
+    refreshToken,
     csrfToken,
     sessionId: session._id,
   };
@@ -32,6 +36,7 @@ const createSession = async (user, meta) => {
 
 export const register = async (data, meta) => {
   if (await User.exists({ email: data.email })) throw new Error("USER_EXISTS");
+
   const user = await User.create(data);
   return createSession(user, meta);
 };
@@ -40,6 +45,7 @@ export const login = async ({ email, password }, meta) => {
   const user = await User.findOne({ email });
   if (!user || !(await user.matchPassword(password)))
     throw new Error("INVALID_CREDENTIALS");
+
   return createSession(user, meta);
 };
 
@@ -59,6 +65,7 @@ export const refresh = async (token, meta) => {
     }
 
     await oldSession.deleteOne();
+
     const user = await User.findById(oldSession.userId);
     if (!user) return null;
 
@@ -84,5 +91,6 @@ export const revokeSession = async (sessionId, userId) => {
   if (!session) throw new Error("SESSION_NOT_FOUND");
   if (session.userId.toString() !== userId.toString())
     throw new Error("FORBIDDEN");
+
   await session.deleteOne();
 };
