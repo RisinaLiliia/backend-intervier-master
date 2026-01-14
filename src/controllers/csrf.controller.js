@@ -1,20 +1,20 @@
 import RefreshSession from "../models/refreshSession.js";
 import { generateCsrfToken, hashCsrfToken } from "../utils/csrf.js";
 
-const csrfCookieOptions = {
-  httpOnly: false,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
-  path: "/",
-};
-
 export const getCsrfToken = async (req, res) => {
-  const csrfToken = generateCsrfToken();
+  try {
+    if (!req.user?.sessionId)
+      return res.status(401).json({ message: "UNAUTHORIZED" });
 
-  await RefreshSession.findByIdAndUpdate(req.user.sessionId, {
-    csrfHash: hashCsrfToken(csrfToken),
-  });
+    const csrfToken = generateCsrfToken();
 
-  res.cookie("csrfToken", csrfToken, csrfCookieOptions);
-  res.json({ csrfToken });
+    await RefreshSession.findByIdAndUpdate(req.user.sessionId, {
+      csrfHash: hashCsrfToken(csrfToken),
+    });
+
+    res.json({ csrfToken });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "CSRF_FETCH_FAILED" });
+  }
 };
